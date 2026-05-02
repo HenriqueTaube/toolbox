@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: toolbox-maintenance-prox
+  namespace: maintenance
+  labels:
+    app: toolbox-maintenance-prox
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: worker-prox
+  hostPID: true
+  hostNetwork: true
+  restartPolicy: Never
+  containers:
+    - name: toolbox
+      image: 192.168.1.152:30090/henrique/toolbox:amd64
+      imagePullPolicy: Always
+      command:
+        - /bin/sh
+        - -c
+        - sleep infinity
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      stdin: true
+      tty: true
+      volumeMounts:
+        - name: host-root
+          mountPath: /host
+          mountPropagation: Bidirectional
+        - name: host-dev
+          mountPath: /dev
+        - name: host-run
+          mountPath: /run
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /
+        type: Directory
+    - name: host-dev
+      hostPath:
+        path: /dev
+        type: Directory
+    - name: host-run
+      hostPath:
+        path: /run
+        type: Directory
