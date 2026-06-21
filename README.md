@@ -1,146 +1,77 @@
-# Toolbox para Kubernetes
+# Toolbox for Kubernetes
 
-## Objetivo
+A multi-arch debug and maintenance image for Kubernetes clusters — nodes and pods.
 
-Criar uma imagem separada para debug e manutencao no cluster.
+This image is not meant to run applications. It exists to give you a comfortable shell inside the cluster for troubleshooting, network inspection, and maintenance tasks.
 
-Essa imagem nao e para rodar aplicacao.
-Ela e para:
+---
 
-- entrar com shell confortavel
-- inspecionar rede
-- editar arquivos
-- testar DNS
-- validar conectividade
-- usar PVCs temporariamente
+## Tools Included
 
-## Por Que Separar da Imagem da Aplicacao
+- `zsh` + `oh-my-zsh` (agnoster theme)
+- `vim`, `nano`
+- `curl`, `wget`, `jq`
+- `git`, `tree`, `file`, `less`
+- `htop`, `lsof`, `procps`
+- `iproute2`, `iptables`, `iputils-ping`
+- `dnsutils`, `netcat-openbsd`, `nmap`, `traceroute`, `mtr-tiny`
+- `openssl`, `telnet`, `tcpdump`
+- `tmux`, `rsync`, `zip`, `unzip`
+- `postgresql-client-17`
 
-A imagem da aplicacao deve ficar minima e previsivel.
+---
 
-A toolbox existe para:
+## Build
 
-- nao poluir a imagem da aplicacao
-- ter ferramentas de terminal no cluster
-- facilitar manutencao e troubleshooting
+The `bootstrap.sh` script handles everything:
 
-## Ferramentas Planejadas
+1. Copies your local `~/.zshrc` into the build context
+2. Sets up a multi-arch buildx builder
+3. Builds and pushes `amd64` + `arm64` to your registry
 
-- `bash`
-- `zsh`
-- `oh-my-zsh`
-- tema `agnoster`
-- `vim`
-- `nano`
-- `curl`
-- `wget`
-- `jq`
-- `less`
-- `git`
-- `tree`
-- `file`
-- `procps`
-- `htop`
-- `lsof`
-- `iproute2`
-- `iptables`
-- `iputils-ping`
-- `dnsutils`
-- `netcat-openbsd`
-- `nmap`
-- `traceroute`
-- `mtr-tiny`
-- `openssl`
-- `telnet`
-- `tcpdump`
-- `tmux`
-- `rsync`
-- `zip`
-- `unzip`
+Edit the registry IP at the top of the file before running:
 
-## Base
-
-Vamos usar:
-
-```dockerfile
-FROM debian:bookworm-slim
+```sh
+# bootstrap.sh
+REGISTRY_IP="192.168.1.191:3000"
 ```
 
-## Shell Padrao
-
-A toolbox agora sobe com:
-
-- `zsh`
-- `oh-my-zsh`
-- tema `agnoster`
-
-Observacao:
-
-- o tema `agnoster` fica melhor com fonte Powerline ou Nerd Font no terminal cliente
-- sem isso, alguns simbolos podem aparecer quebrados
-
-## Build Local
+Then run:
 
 ```bash
-cd /home/coder/talos/toolbox
-./build-local.sh
+./bootstrap.sh
 ```
 
-Isso gera:
+---
 
-```text
-toolbox-k8s:dev
-```
+## Shell Functions
 
-## Build Multi-arquitetura
+The file `functions.sh` contains zsh functions to use the toolbox in your cluster. Source it or paste the functions into your `~/.zshrc`.
+
+### Node Maintenance
+
+Spawns a **privileged pod** with full host access (`hostPID`, `hostNetwork`, `/`, `/dev`, `/run` mounted). Used for low-level node troubleshooting.
 
 ```bash
-cd /home/coder/talos/toolbox
-IMAGE_REPO=192.168.1.54:3000/henrique/toolbox \
-IMAGE_TAG=0.1.0 \
-./build-multiarch.sh
+kmaintenance_prox   # lands on worker-prox (amd64)
+kmaintenance_rasp   # lands on worker-rasp (arm64)
 ```
 
-## Uso Rapido no Cluster
+### Pod Maintenance
 
-Shell temporario:
+Spawns a temporary toolbox pod co-located on the same node as a target pod. No privileges — useful for network and filesystem debugging at the application level.
 
 ```bash
-kubectl -n default run toolbox --rm -it \
-  --image=192.168.1.54:3000/henrique/toolbox:0.1.0 \
-  -- bash
+kmaintenance_pod <namespace> <pod>
+
+# example
+kmaintenance_pod forgejo forgejo-5d97dd6f9c-dn6b6
 ```
 
-## Observacao sobre atualizacao da imagem
+The pod is automatically deleted after you exit the shell.
 
-Ao usar a toolbox em nodes diferentes, apareceu um ponto importante:
+---
 
-- confiar apenas em `:latest` pode ser confuso
-- o node pode reutilizar a imagem que ja estava em cache
-- isso atrapalha principalmente quando a imagem foi rebuildada para corrigir suporte multi-arquitetura
+## Image Pull Policy
 
-Sinal tipico:
-
-- `kubectl describe pod ...` mostra:
-  - `image already present on machine`
-
-Recomendacoes:
-
-1. definir `imagePullPolicy: Always` nos pods de maintenance
-2. preferir tags novas em cada rebuild importante, por exemplo:
-   - `0.1.1`
-   - `0.1.2`
-   - `pgtools-1`
-
-Exemplo:
-
-```yaml
-image: 192.168.1.152:30090/henrique/toolbox:0.1.1
-imagePullPolicy: Always
-```
-
-Isso evita ficar preso em imagem antiga cacheada no node.
-
-## Proximo Passo
-
-Criar a imagem e depois publicar no Forgejo.
+Always set `imagePullPolicy: Always` on maintenance pods to avoid stale cached images on nodes. All YAMLs in this repo already include this.
