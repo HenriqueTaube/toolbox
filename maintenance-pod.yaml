@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: toolbox-maintenance-pod
+  namespace: ${POD_NAMESPACE}
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: ${POD_NODE}
+  containers:
+    - name: toolbox
+      image: ${TOOLBOX_IMAGE}
+      imagePullPolicy: Always
+      stdin: true
+      tty: true
+      command: ["/bin/zsh", "-i"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop: ["ALL"]
