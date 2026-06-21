@@ -47,7 +47,7 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client-17 \
     && useradd -m -u 1000 -s /bin/zsh toolbox \
-    && git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git /home/toolbox/.oh-my-zsh \
+    && git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git /home/toolbox/.oh-my-zsh || true \
     && chown -R 1000:0 /home/toolbox \
     && rm -rf /var/lib/apt/lists/*
 
