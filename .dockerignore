@@ -1,1 +1,8 @@
-
+*.sh
+*.md
+*.yaml
+*.txt
+functions.sh
+.git
+.gitignore
+.zshrc
