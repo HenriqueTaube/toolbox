@@ -13,7 +13,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: toolbox
-      image: 192.168.1.191:3000/henrique/toolbox:amd64
+      image: 192.168.1.191:3000/henrique/toolbox:latest
       imagePullPolicy: Always
       command:
         - /bin/sh
